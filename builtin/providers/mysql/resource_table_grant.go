@@ -8,12 +8,12 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 )
 
-func resourceGrant() *schema.Resource {
+func resourceTableGrant() *schema.Resource {
 	return &schema.Resource{
-		Create: CreateGrant,
+		Create: CreateTableGrant,
 		Update: nil,
-		Read:   ReadGrant,
-		Delete: DeleteGrant,
+		Read:   ReadTableGrant,
+		Delete: DeleteTableGrant,
 
 		Schema: map[string]*schema.Schema{
 			"user": &schema.Schema{
@@ -30,6 +30,12 @@ func resourceGrant() *schema.Resource {
 			},
 
 			"database": &schema.Schema{
+				Type:     schema.TypeString,
+				Required: true,
+				ForceNew: true,
+			},
+
+			"table": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
@@ -53,7 +59,7 @@ func resourceGrant() *schema.Resource {
 	}
 }
 
-func CreateGrant(d *schema.ResourceData, meta interface{}) error {
+func CreateTableGrant(d *schema.ResourceData, meta interface{}) error {
 	conn := meta.(*providerConfiguration).Conn
 
 	// create a comma-delimited string of privileges
@@ -65,9 +71,10 @@ func CreateGrant(d *schema.ResourceData, meta interface{}) error {
 	}
 	privileges = strings.Join(privilegesList, ",")
 
-	stmtSQL := fmt.Sprintf("GRANT %s on %s.* TO '%s'@'%s'",
+	stmtSQL := fmt.Sprintf("GRANT %s on %s.%s TO '%s'@'%s'",
 		privileges,
 		d.Get("database").(string),
+		d.Get("table").(string),
 		d.Get("user").(string),
 		d.Get("host").(string))
 
@@ -87,16 +94,17 @@ func CreateGrant(d *schema.ResourceData, meta interface{}) error {
 	return ReadGrant(d, meta)
 }
 
-func ReadGrant(d *schema.ResourceData, meta interface{}) error {
+func ReadTableGrant(d *schema.ResourceData, meta interface{}) error {
 	// At this time, all attributes are supplied by the user
 	return nil
 }
 
-func DeleteGrant(d *schema.ResourceData, meta interface{}) error {
+func DeleteTableGrant(d *schema.ResourceData, meta interface{}) error {
 	conn := meta.(*providerConfiguration).Conn
 
-	stmtSQL := fmt.Sprintf("REVOKE GRANT OPTION ON %s.* FROM '%s'@'%s'",
+	stmtSQL := fmt.Sprintf("REVOKE GRANT OPTION ON %s.%s FROM '%s'@'%s'",
 		d.Get("database").(string),
+		d.Get("table").(string),
 		d.Get("user").(string),
 		d.Get("host").(string))
 
@@ -106,8 +114,9 @@ func DeleteGrant(d *schema.ResourceData, meta interface{}) error {
 		return err
 	}
 
-	stmtSQL = fmt.Sprintf("REVOKE ALL ON %s.* FROM '%s'@'%s'",
+	stmtSQL = fmt.Sprintf("REVOKE ALL ON %s.%s FROM '%s'@'%s'",
 		d.Get("database").(string),
+		d.Get("table").(string),
 		d.Get("user").(string),
 		d.Get("host").(string))
 
